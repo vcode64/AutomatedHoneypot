@@ -16,6 +16,7 @@ To achieve this, the architecture is split into two distinct, peered Virtual Pri
 * **Metadata Protection:** The exposed instance uses OS-level `iptables` to block access to the GCP Metadata server (`169.254.169.254`), preventing a compromised honeypot from stealing cloud credentials.
 * **Phase 4 Lockdown:** The deployment utilizes a two-step Terraform process. Initial setup allows internet access to download packages. Once configured, a "Post-Config" Terraform run aggressively locks down the environment — deleting the NAT gateway and enforcing strict egress controls on the honeypot.
 
+![Diagram](media/diagram.png)
 ---
 
 ## Initial Setup
@@ -203,3 +204,7 @@ Terraform -> https://registry.terraform.io/providers/hashicorp/google/latest/doc
 
 
 **If you find any misconfigurations or would like to suggest any improvements, don't hesitate to reach out or send a pull request!**
+
+![Dashboard](media/wazuh-dashboard.png)
+
+![Endpoints](media/wazuh-endpoints.png)
