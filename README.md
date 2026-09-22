@@ -30,6 +30,8 @@ Before running the deployment, you must set up your Google Cloud environment and
    * Go to **APIs & Services** > **Library**.
    * Search for **Compute Engine API** and click **Enable**.
 
+![Compute API](media/compute_api.png)
+
 ### 2. Install Google Cloud CLI (`gcloud`)
 You need the `gcloud` CLI to authenticate Terraform and securely access your instances via IAP.
 * Follow the official installation guide for your OS: [Install gcloud CLI](https://cloud.google.com/sdk/docs/install)
@@ -78,7 +80,7 @@ terraform apply -var="project_id=YOUR_PROJECT_ID"
 *Type `yes` when prompted to confirm the deployment.*
 
 ### Step 4: Monitor the Installation (Crucial)
-The virtual machines are created quickly, but the Wazuh, Cowrie, and Suricata installations take several minutes. You can watch the live installation logs using the GCP serial console to ensure everything succeeds. 
+The virtual machines are created quickly, but the Wazuh, Cowrie, and Suricata installations may take 10+ minutes to complete. You can watch the live installation logs using the GCP serial console to ensure everything succeeds.
 
 Open two new terminal windows and run these commands:
 
@@ -86,6 +88,8 @@ Open two new terminal windows and run these commands:
 ```bash
 gcloud compute instances tail-serial-port-output monitor-instance --zone us-west1-b
 ```
+IMPORTANT: During the monitor-instance setup, Wazuh will generate and print an admin password to this console. Record this password, as you will need it to log into the SIEM dashboard later (User: admin).
+
 **Terminal B (Watch the Exposed Instance):**
 ```bash
 gcloud compute instances tail-serial-port-output exposed-instance --zone us-west1-b
@@ -127,18 +131,75 @@ ssh -i ~/.ssh/monitor_instance_key -N -L 8443:localhost:443 analyst@monitor-inst
 ```
 Once the command is running, open your web browser and navigate to https://localhost:8443 to access the dashboard.
 
-**Note on the Exposed Instance:**
-Native SSH has been completely purged from the exposed-instance as part of the setup to ensure attackers interact solely with the Cowrie honeypot. You will not be able to SSH into it. If administrative access is required later, you must access it via the GCP Serial Console in your web browser.
+User: admin
+Password: Use the password you recorded during Step 4. If you missed it, you can retrieve it by SSHing into the monitor-instance and running:
+```bash
+sudo tar -O -xvf wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
+```
 
 ### To test your honeypot
+Simulate an attacker scanning your public IP:
 ```bash
 sudo nmap -p 22,23 -A -T4 <target_ip>
 sudo nmap -p 22,23 -A -Pn <target_ip>
 ```
 
+### Wazuh Dashboard Tips
+
+    Refresh Index Fields: After you get your first alerts, Wazuh will dynamically generate new fields (like dst_ip). Go to Dashboard Management -> Index Patterns -> wazuh-alerts* and click the Refresh field list button (the circular arrow icon at the top right) to ensure the SIEM recognizes them.
+
+    Viewing All Traffic: By default, Wazuh only shows triggered alerts. In case you want to see all traffic that goes into Cowrie (even noise that wasn't triggered by basic rules), navigate to Dashboard Management -> Index Patterns and click Create index pattern. Enter wazuh-archives* to explore raw traffic logs.
+
+### Fixing Data Normalization (Suricata vs. Cowrie Fields)
+
+Connect to your monitor-instance and open the Filebeat configuration:
+```bash
+sudo nano /etc/filebeat/filebeat.yml
+```
+Scroll to the very bottom of the file and paste this Javascript processor. (Make sure the indentation aligns perfectly with the left margin!)
+
+```bash
+processors:
+  - script:
+      lang: javascript
+      id: normalize_suricata
+      source: >
+        function process(event) {
+            var msg = event.Get("message");
+            if (msg) {
+                msg = msg.replace(/"dest_ip":/g, '"dst_ip":');
+                msg = msg.replace(/"dest_port":/g, '"dst_port":');
+                event.Put("message", msg);
+            }
+        }
+```
+
+Run a quick test and restart Filebeat:
+
+```bash
+sudo filebeat test config
+sudo systemctl restart filebeat
+```
+
+### Troubleshooting & Maintenance
+
+If you need to completely rebuild the honeypot (for example, to clear an infected state or test a new startup script), taint the resource and reapply:
+```bash
+terraform taint google_compute_instance.exposed_instance
+terraform apply -var="project_id=YOUR_PROJECT_ID"
+```
+
 ### References
+
 Cowrie honeypot -> https://docs.cowrie.org/en/stable/INSTALL.html
+
 Wazuh -> https://documentation.wazuh.com/current/quickstart.html
+
 Suricata -> https://docs.suricata.io/en/suricata-8.0.7/install.html
+
 Terraform on GCP -> https://docs.cloud.google.com/docs/terraform/terraform-overview
+
 Terraform -> https://registry.terraform.io/providers/hashicorp/google/latest/docs
+
+
+**If you find any misconfigurations or would like to suggest any improvements, don't hesitate to reach out or send a pull request!**

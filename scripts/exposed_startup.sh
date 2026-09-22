@@ -7,7 +7,7 @@ exec > >(tee -a /var/log/startup-script.log | logger -t startup-script -s 2>/dev
 echo "[*] Starting Exposed Honeypot setup..."
 
 # Block GCP Metadata
-iptables -A OUTPUT -d 169.254.169.254 -j DROP
+iptables -A OUTPUT -d 169.254.169.254 -p tcp --dport 80 -j DROP
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent
 netfilter-persistent save
@@ -38,9 +38,8 @@ sed -i '/^\[telnet\]/,/^\[/ s/.*enabled =.*/enabled = true/' etc/cowrie.cfg
 EOF
 
 # Disable native SSH server
-systemctl stop sshd 
-systemctl disable sshd 
-apt-get purge -y openssh-server
+systemctl stop ssh ssh.socket || true
+systemctl disable ssh ssh.socket || true
 
 # Start the honeypot
 sudo -i -u cowrie bash -c "cd ~/my-honeypot && source cowrie-env/bin/activate && AUTHBIND_ENABLED=yes cowrie start"
