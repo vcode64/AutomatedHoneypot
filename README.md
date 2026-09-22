@@ -135,7 +135,7 @@ Once the command is running, open your web browser and navigate to https://local
 User: admin
 Password: Use the password you recorded during Step 4. If you missed it, you can retrieve it by SSHing into the monitor-instance and running:
 ```bash
-sudo tar -O -xvf wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
+sudo tar -O -xvf /wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
 ```
 
 ### To test your honeypot
