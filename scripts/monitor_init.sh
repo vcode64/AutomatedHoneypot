@@ -1,6 +1,6 @@
 #!/bin/bash
-# FAIL ON ERROR & ENABLE SUCCESS MONITORING
 
+# FAIL ON ERROR & ENABLE SUCCESS MONITORING
 set -ex
 exec > >(tee -a /var/log/startup-script.log | logger -t startup-script -s 2>/dev/console) 2>&1
 

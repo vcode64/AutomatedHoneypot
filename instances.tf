@@ -33,9 +33,8 @@ resource "google_compute_instance" "monitor_instance" {
     enable-oslogin         = "FALSE"
     block-project-ssh-keys = "TRUE"
     ssh-keys               = "analyst:${file("~/.ssh/monitor_instance_key.pub")}"
+    user-data              = file("scripts/monitor_init.sh")
   }
-
-  metadata_startup_script = file("scripts/monitor_startup.sh")
 }
 
 resource "google_compute_instance" "exposed_instance" {
@@ -75,7 +74,6 @@ resource "google_compute_instance" "exposed_instance" {
   metadata = {
     enable-oslogin         = "FALSE"
     block-project-ssh-keys = "TRUE"
+    user-data              = file("scripts/exposed_init.sh")
   }
-
-  metadata_startup_script = file("scripts/exposed_startup.sh")
 }
